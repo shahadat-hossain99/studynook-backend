@@ -26,6 +26,17 @@ async function run() {
   try {
     await client.connect();
 
+    const db = client.db("studynook");
+    const roomCollection = db.collection("rooms");
+
+    app.post("/room", async (req, res) => {
+      const roomData = req.body;
+
+      console.log(roomData);
+      const result = await roomCollection.insertOne(roomData);
+      res.json(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
