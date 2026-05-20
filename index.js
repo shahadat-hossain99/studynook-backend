@@ -29,11 +29,24 @@ async function run() {
     const db = client.db("studynook");
     const roomCollection = db.collection("rooms");
 
+    app.get("/room", async (req, res) => {
+      const result = await roomCollection.find().toArray();
+      res.json(result);
+    });
+
     app.post("/room", async (req, res) => {
       const roomData = req.body;
 
       console.log(roomData);
       const result = await roomCollection.insertOne(roomData);
+      res.json(result);
+    });
+
+    app.get("/room/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await roomCollection.findOne({
+        _id: new ObjectId(id),
+      });
       res.json(result);
     });
 
