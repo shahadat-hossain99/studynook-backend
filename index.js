@@ -146,6 +146,74 @@ async function run() {
       res.status(201).json({ message: "Room booked successfully!", result });
     });
 
+    // for booking card
+
+    app.get("/bookings", verifyToken, async (req, res) => {
+      const userId = req.user.sub;
+      const result = await bookingCollection
+        .find({ userId })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.json(result);
+    });
+
+    // for canceling booking
+
+    app.patch("/bookings/:id/cancel", verifyToken, async (req, res) => {
+      const { id } = req.params;
+      const userId = req.user.sub;
+
+      const booking = await bookingCollection.findOne({
+        _id: new ObjectId(id),
+      });
+
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found." });
+      }
+      if (booking.userId !== userId) {
+        return res
+          .status(403)
+          .json({ message: "Forbidden. This is not your booking." });
+      }
+      if (booking.status === "cancelled") {
+        return res
+          .status(400)
+          .json({ message: "Booking is already cancelled." });
+      }
+
+      await bookingCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "cancelled" } },
+      );
+
+      await userProfileCollection.updateOne(
+        { userId },
+        { $pull: { bookings: new ObjectId(id) } },
+      );
+
+      res.json({ message: "Booking cancelled successfully." });
+    });
+
+    // For homepage featured section
+
+    app.get("/featured", async (req, res) => {
+      try {
+        const result = await roomCollection
+          .find()
+          .sort({ _id: -1 })
+          .limit(6)
+          .toArray();
+
+        res.status(200).json(result);
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+          message: "Failed to fetch featured rooms",
+        });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
