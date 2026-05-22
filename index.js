@@ -41,7 +41,8 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const { payload } = await jwtVerify(token, JWKS);
-    console.log(payload);
+    req.user = payload;
+    // console.log(payload);
     next();
   } catch (error) {
     return res.status(403).json({ message: "Forbidden" });
@@ -55,6 +56,7 @@ async function run() {
     const db = client.db("studynook");
     const roomCollection = db.collection("rooms");
     const bookingCollection = db.collection("bookings");
+    const userProfileCollection = db.collection("userProfiles");
 
     app.get("/room", async (req, res) => {
       const result = await roomCollection.find().toArray();
@@ -75,6 +77,73 @@ async function run() {
         _id: new ObjectId(id),
       });
       res.json(result);
+    });
+
+    //! POST Operation for /bookings and Conflict validation
+    app.post("/bookings", verifyToken, async (req, res) => {
+      const {
+        roomId,
+        roomName,
+        roomImage,
+        bookingDate,
+        startTime,
+        endTime,
+        totalHours,
+        totalCost,
+        specialNote,
+      } = req.body;
+
+      const today = new Date().toISOString().split("T")[0];
+      if (bookingDate < today) {
+        return res
+          .status(400)
+          .json({ message: "Booking date cannot be in the past." });
+      }
+      if (endTime <= startTime) {
+        return res
+          .status(400)
+          .json({ message: "End time must be after start time." });
+      }
+
+      const conflict = await bookingCollection.findOne({
+        roomId,
+        bookingDate,
+        status: "confirmed",
+        startTime: { $lt: endTime },
+        endTime: { $gt: startTime },
+      });
+
+      if (conflict) {
+        return res.status(409).json({
+          message: `Room already booked from ${conflict.startTime}–${conflict.endTime} on ${bookingDate}.`,
+        });
+      }
+
+      const booking = {
+        roomId,
+        roomName,
+        roomImage,
+        bookingDate,
+        startTime,
+        endTime,
+        totalHours,
+        totalCost,
+        specialNote: specialNote || "",
+        userId: req.user.sub,
+        userEmail: req.user.email,
+        status: "confirmed",
+        createdAt: new Date(),
+      };
+
+      const result = await bookingCollection.insertOne(booking);
+
+      await userProfileCollection.updateOne(
+        { userId: req.user.sub },
+        { $push: { bookings: result.insertedId } },
+        { upsert: true },
+      );
+
+      res.status(201).json({ message: "Room booked successfully!", result });
     });
 
     // Send a ping to confirm a successful connection
