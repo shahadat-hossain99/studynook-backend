@@ -9,7 +9,7 @@ const app = express();
 const cors = require("cors");
 const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT;
 
 app.use(cors());
 app.use(express.json());
@@ -118,12 +118,12 @@ async function run() {
         ...updatableFields
       } = req.body;
 
-      const result = await roomCollection.updateOne(
+      await roomCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: { ...updatableFields, updatedAt: new Date() } },
       );
 
-      res.json({ message: "Room updated successfully!", result });
+      res.json({ message: "Room updated successfully!" });
     });
 
     // Delete operation to delete added room
@@ -292,6 +292,17 @@ async function run() {
           message: "Failed to fetch featured rooms",
         });
       }
+    });
+
+    //! for room listing
+
+    app.get("/my-listings", verifyToken, async (req, res) => {
+      const ownerUserId = req.user.sub;
+      const result = await roomCollection
+        .find({ ownerUserId })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.json(result);
     });
 
     // Send a ping to confirm a successful connection
