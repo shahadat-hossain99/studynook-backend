@@ -96,6 +96,56 @@ async function run() {
       res.json(result);
     });
 
+    // PUT Operation for editing added room
+
+    app.put("/room/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
+
+      const room = await roomCollection.findOne({ _id: new ObjectId(id) });
+      if (!room) return res.status(404).json({ message: "Room not found." });
+
+      if (room.ownerUserId !== req.user.sub) {
+        return res
+          .status(403)
+          .json({ message: "Forbidden. You don't own this room." });
+      }
+
+      const {
+        ownerUserId,
+        ownerEmail,
+        bookingCount,
+        createdAt,
+        ...updatableFields
+      } = req.body;
+
+      const result = await roomCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { ...updatableFields, updatedAt: new Date() } },
+      );
+
+      res.json({ message: "Room updated successfully!", result });
+    });
+
+    // Delete operation to delete added room
+
+    app.delete("/room/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
+
+      const room = await roomCollection.findOne({ _id: new ObjectId(id) });
+      if (!room) return res.status(404).json({ message: "Room not found." });
+
+      if (room.ownerUserId !== req.user.sub) {
+        return res
+          .status(403)
+          .json({ message: "Forbidden. You don't own this room." });
+      }
+
+      await roomCollection.deleteOne({ _id: new ObjectId(id) });
+      await bookingCollection.deleteMany({ roomId: id });
+
+      res.json({ message: "Room deleted successfully!" });
+    });
+
     //! Every single Operations for Booking ,checking owner and detect conflict and show bookings in ui
 
     //? POST Operation for /bookings and Conflict validation
