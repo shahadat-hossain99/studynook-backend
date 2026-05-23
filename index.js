@@ -66,8 +66,19 @@ async function run() {
     app.post("/room", async (req, res) => {
       const roomData = req.body;
 
-      console.log(roomData);
+      const finalRoom = {
+        ...roomData,
+        ownerUserId: req.user.sub,
+        ownerEmail: req.user.email,
+        bookingCount: 0,
+        createdAt: new Date(),
+      };
+
+      // console.log(roomData);
       const result = await roomCollection.insertOne(roomData);
+
+      const result = await roomCollection.insertOne(finalRoom);
+
       res.json(result);
     });
 
@@ -137,6 +148,11 @@ async function run() {
 
       const result = await bookingCollection.insertOne(booking);
 
+      await roomCollection.updateOne(
+        { _id: new ObjectId(roomId) },
+        { $inc: { bookingCount: 1 } },
+      );
+
       await userProfileCollection.updateOne(
         { userId: req.user.sub },
         { $push: { bookings: result.insertedId } },
@@ -184,6 +200,11 @@ async function run() {
       await bookingCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: { status: "cancelled" } },
+      );
+
+      await roomCollection.updateOne(
+        { _id: new ObjectId(booking.roomId) },
+        { $inc: { bookingCount: -1 } },
       );
 
       await userProfileCollection.updateOne(
