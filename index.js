@@ -25,6 +25,8 @@ const client = new MongoClient(uri, {
 
 const JWKS = createRemoteJWKSet(new URL(`http://localhost:3000/api/auth/jwks`));
 
+// ! token verifier function and get the owner or user
+
 const verifyToken = async (req, res, next) => {
   const authHeather = req?.headers.authorization;
   if (!authHeather) {
@@ -53,17 +55,21 @@ async function run() {
   try {
     await client.connect();
 
+    //! DataBase and Database Collections are here
+
     const db = client.db("studynook");
     const roomCollection = db.collection("rooms");
     const bookingCollection = db.collection("bookings");
     const userProfileCollection = db.collection("userProfiles");
+
+    //! Every single api for rooms add,get to show in the ui, see dynamic details page
 
     app.get("/room", async (req, res) => {
       const result = await roomCollection.find().toArray();
       res.json(result);
     });
 
-    app.post("/room", async (req, res) => {
+    app.post("/room", verifyToken, async (req, res) => {
       const roomData = req.body;
 
       const finalRoom = {
@@ -75,7 +81,7 @@ async function run() {
       };
 
       // console.log(roomData);
-      const result = await roomCollection.insertOne(roomData);
+      // const result = await roomCollection.insertOne(roomData);
 
       const result = await roomCollection.insertOne(finalRoom);
 
@@ -90,7 +96,10 @@ async function run() {
       res.json(result);
     });
 
-    //! POST Operation for /bookings and Conflict validation
+    //! Every single Operations for Booking ,checking owner and detect conflict and show bookings in ui
+
+    //? POST Operation for /bookings and Conflict validation
+
     app.post("/bookings", verifyToken, async (req, res) => {
       const {
         roomId,
@@ -215,7 +224,7 @@ async function run() {
       res.json({ message: "Booking cancelled successfully." });
     });
 
-    // For homepage featured section
+    //! For homepage featured section
 
     app.get("/featured", async (req, res) => {
       try {
@@ -248,7 +257,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Server is running fine !!");
+  res.send("Server is running On Fire !!");
 });
 
 app.listen(port, () => {
