@@ -65,7 +65,30 @@ async function run() {
     //! Every single api for rooms add,get to show in the ui, see dynamic details page
 
     app.get("/room", async (req, res) => {
-      const result = await roomCollection.find().toArray();
+      const { search, amenities, minRate, maxRate, floor } = req.query;
+
+      const filter = {};
+
+      if (search) {
+        filter.roomName = { $regex: search, $options: "i" };
+      }
+
+      if (amenities) {
+        const amenityList = amenities.split(",");
+        filter.amenities = { $in: amenityList };
+      }
+
+      if (minRate || maxRate) {
+        filter.hourlyRate = {};
+        if (minRate) filter.hourlyRate.$gte = Number(minRate);
+        if (maxRate) filter.hourlyRate.$lte = Number(maxRate);
+      }
+
+      if (floor) {
+        filter.floor = Number(floor);
+      }
+
+      const result = await roomCollection.find(filter).toArray();
       res.json(result);
     });
 
@@ -304,6 +327,8 @@ async function run() {
         .toArray();
       res.json(result);
     });
+
+    //
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
