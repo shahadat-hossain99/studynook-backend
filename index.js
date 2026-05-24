@@ -23,7 +23,9 @@ const client = new MongoClient(uri, {
   },
 });
 
-const JWKS = createRemoteJWKSet(new URL(`http://localhost:3000/api/auth/jwks`));
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+);
 
 // ! token verifier function and get the owner or user
 
@@ -53,7 +55,9 @@ const verifyToken = async (req, res, next) => {
 
 async function run() {
   try {
-    await client.connect();
+    //! client.connect() -comment this when deployed
+
+    // await client.connect();
 
     //! DataBase and Database Collections are here
 
@@ -328,10 +332,10 @@ async function run() {
       res.json(result);
     });
 
-    //
+    //! await client.db("admin").command({ ping: 1 });-comment this when deployed
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
